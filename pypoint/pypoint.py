@@ -81,9 +81,11 @@ class Point:
     params = 'devices' + device_id
     return build_request(self.token, params)
 
-  def update_device(self, device_id=None):
-    # TODO
-    pass
+  def update_device(self, device_id=None, data):
+    if not device_id: device_id = self.default_id
+    url = API_URL + 'devices' + device_id
+    headers = { 'Authorization': 'Bearer ' + token }
+    requests.put(url, headers=headers, data=data)
   
   def get_device_id(self, device_num=0):
     if len(self.points) >= device_num and len(self.points) > 0:
@@ -126,8 +128,53 @@ class Point:
 
   ### Endpoint /homes
 
+  def get_homes(self):
+    params = 'homes'
+    return build_request(self.token, params)
+
+  def create_home(self, json_data):
+    pass # TODO
+
+  def get_home(self, home_id):
+    pass # TODO
+
+  def update_home(self, home_id):
+    pass # TODO
+
+  def add_home_member(self, home_id, user_id):
+    pass # TODO
+
+  def delete_home_member(self, home_id, user_id):
+    pass # TODO
+
   ### Endpoint /timelines
+
+  def get_timeline_events(self, user_id, start_at, end_at, limit, offset):
+    pass # TODO
+
+  def register_web_hook(self):
+    pass # TODO
+
+  def get_web_hooks(self):
+    pass # TODO
+
+  def delete_web_hook(self):
+    pass # TODO
+
+  def trigger_test_event(self):
+    pass # TODO
 
   ### Endpoint /users
 
+  def create_new_user(self, fullname, email, password, subscribe):
+    pass # TODO
+
+  def get_user(self, user_id):
+    pass # TODO
+
+  def update_user(self, fullname=None, nick=None, email=None, old_pw=None, new_pw=None):
+    pass # TODO
+
+  def get_devices_by_user(self, user_id):
+    pass # TODO
 
