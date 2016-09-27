@@ -52,7 +52,7 @@ class Point:
   def __init__(self, cred_file):
     client_id, client_secret, username, password = get_credentials(cred_file)
     self.token = get_token(client_id, username, password)
-    self.header = { 'Authorization': 'Bearer ' + self.token }
+    self.header = {'Authorization': 'Bearer ' + self.token}
     self.init_devices()
 
   def init_devices(self):
@@ -63,24 +63,25 @@ class Point:
     if len(self.points) > 0:
       self.default_id = self.points[0]
 
+  def _get(self, params, *valid_response):
+    url = API_URL + params
+    res = requests.get(url, headers=self.header)
+    return check_response(res, *valid_response)
+
   ### Endpoint /devices
   
   def get_devices(self):
-    url = API_URL + 'devices'
-    res = requests.get(url, headers=self.header)
-    return check_response(res, 200)
+    return self._get('devices', 200)
 
   def get_device(self, device_id=None):
     if not device_id: device_id = self.default_id
-    url = API_URL + 'devices' + str(device_id)
-    res = requests.get(url, headers=self.header)
-    return check_response(res, 200)
+    self._get('devices/' + str(device_id), 200)
 
-  def update_device(self, data, device_id=None):
+  def update_device(self, new_conf, device_id=None):
     if not device_id: device_id = self.default_id
-    url = API_URL + 'devices' + str(device_id)
-    res = requests.put(url, headers=self.header, data=data)
-    return check_response(res, 200, 201)
+    url = API_URL + 'devices/' + str(device_id)
+    res = requests.put(url, headers=self.header, json=new_conf)
+    return check_response(res, 200)
   
   def get_device_id(self, device_num=0):
     if len(self.points) >= device_num and len(self.points) > 0:
@@ -88,75 +89,72 @@ class Point:
     else:
       return -1 
 
+  # Returns the latest reported temperature
   def get_temperature(self, device_id=None):
     if not device_id: device_id = self.default_id
     return self.get_temperature_history(device_id)['values'][-1]
 
   def get_temperature_history(self, device_id=None):
     if not device_id: device_id = self.default_id
-    url = API_URL + 'devices/' + str(device_id) + '/temperature'
-    res = requests.get(url, headers=self.header)
-    return check_response(res, 200)
+    return self._get('devices/' + str(device_id) + '/temperature', 200)
 
   def get_humidity(self, device_id=None):
     if not device_id: device_id = self.default_id
-    url = API_URL + 'devices/' + str(device_id) + '/humidity'
-    res = requests.get(url, headers=self.header)
-    return check_response(res, 200)
+    return self._get('devices/' + str(device_id) + '/humidity', 200)
 
   def get_pressure(self, device_id=None):
     if not device_id: device_id = self.default_id
-    url = API_URL + 'devices/' + str(device_id) + '/pressure'
-    res = requests.get(url, headers=self.header)
-    return check_response(res, 200)
+    return self._get('devices/' + str(device_id) + '/pressure', 200)
 
   def get_sound_peak_levels(self, device_id=None):
     if not device_id: device_id = self.default_id
-    url = 'devices/' + str(device_id) + '/sound_peak_levels'
-    res = requests.get(url, headers=self.header)
-    return check_response(res, 200)
+    return self._get('devices/' + str(device_id) + '/sound_peak_levels', 200)
 
   def get_sound_avg_levels(self, device_id=None):
     if not device_id: device_id = self.default_id
-    url = API_URL + 'devices/' + str(device_id) + '/sound_avg_levels'
-    res = requests.get(url, headers=self.header)
-    return check_response(res, 200)
+    return self._get('devices/' + str(device_id) + '/sound_avg_levels', 200)
 
   def get_events(self, device_id=None):
     if not device_id: device_id = self.default_id
-    url = API_URL + 'devices/' + str(device_id) + '/events'
-    res = requests.get(url, headers=self.header)
-    return check_response(res, 200)
+    return self._get('devices/' + str(device_id) + '/events', 200)
 
   ### Endpoint /homes
 
   def get_homes(self):
-    url = API_URL + 'homes'
-    res = requests.get(url, headers=self.header)
-    return check_response(res, 200)
+    return self._get('homes', 200)
 
   def create_home(self, json_data):
-    pass # TODO POST 
+    url = API_URL + 'homes'
+    res = requests.post(url, data=None, json=json_data)
+    return check_response(res, 200, 201, 202)
 
   def get_home(self, home_id):
+    return self._get('homes/' + str(home_id), 200)
+
+  # Update home, accepts same data as when creating a home.
+  def update_home(self, home_id, json_data):
     url = API_URL + 'homes/' + str(home_id)
-    res = requests.get(url, headers=self.header)
-    return check_response(res, 200)
+    res = requests.put(url, headers=self.header, json=json_data)
+    return check_response(res, 200, 201)
 
-  def update_home(self, home_id):
-    pass # TODO PUT
-
+  # Add user to home
   def add_home_member(self, home_id, user_id):
-    pass # TODO POST
+    url = API_URL + 'homes/' + str(home_id) + '/members'
+    json_data = json.JSONEncoder().encode({'user_id': user_id, 'scopes': ['family']})
+    res = requests.post(url, data=None, json=json_data)
+    return check_response(res, 200, 201, 202)
 
+  # Delete a user from a home
   def delete_home_member(self, home_id, user_id):
-    pass # TODO DELETE
+    url = API_URL + 'homes/' + home_id + '/members' + user_id
+    res = requests.delete(url, headers=self.header)
+    return check_response(res, 200, 202, 204)
 
   ### Endpoint /timelines
 
   # Retrieve a list of timeline events
   # Required parameters:
-  #   user_id
+  #   user_id (set to 'me' for current user)
   # Optional parameters:
   #   start_at: UTC Time (e.g. 2014-12-20T09:00:00.000Z)
   #   end_at:   UTC Time (e.g. 2016-12-20T09:00:00.000Z)
@@ -185,19 +183,15 @@ class Point:
     pass # TODO
 
   def get_user(self, user_id='me'):
-    url = API_URL + '/users/' + str(user_id)
-    res = requests.get(url, headers=self.header)
-    return check_response(res, 200)
+    return self._get('/users/' + str(user_id), 200)
 
   # Get user_id of user associated with the current access token.
   def get_user_id(self):
-    return get_user['user_id']
+    return self.get_user()['user_id']
 
   def update_user(self, fullname=None, nick=None, email=None, old_pw=None, new_pw=None):
     pass # TODO
 
   def get_devices_by_user(self, user_id='me'):
-    url = API_URL + '/users/' + str(user_id) + '/devices'
-    res = requests.get(url, headers=self.header)
-    return check_response(res, 200)
+    return self._get('/users/' + str(user_id) + '/devices', 200)
 
