@@ -88,12 +88,12 @@ class Point(object):
         else:
             return -1
 
-    def get_temperature(self, device_id=None):
+    def get_latest_temperature(self, device_id=None):
         """ Returns the latest reported temperature. """
         if not device_id: device_id = self.default_id
         return self.get_temperature_history(device_id)['values'][-1]
 
-    def get_temperature_history(self, device_id=None):
+    def get_temperature(self, device_id=None):
         if not device_id: device_id = self.default_id
         return self._get('devices/' + str(device_id) + '/temperature', 200)
 
