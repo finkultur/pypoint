@@ -2,4 +2,6 @@
 *.swo
 *.swn
 *.pyc
+*.coverage
 credentials.txt
+*credentials.*
