@@ -1,3 +1,0 @@
-#a = get_token('c33c3776f220cd90', 'live1@minut.com', 'superhero1')
-#print(a)
-
