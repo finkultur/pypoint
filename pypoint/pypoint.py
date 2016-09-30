@@ -1,36 +1,19 @@
 import requests
 import json
-import re
+import ConfigParser
 
 CRED_FILE = 'credentials.txt'
 API_URL = 'https://api.minut.com/draft1/'
 
 # Parses cred_file for credentials
 def get_credentials(cred_file):
-    try: lines = open(cred_file, 'r').readlines()
-    except IOError:
-        print('Unable to read credential file \'' + cred_file + '\'')
-        return -1
-    if len(lines) < 2:
-        print("Invalid credentials file")
-        return -1
-    # Search credential file for id
-    match = re.compile(r'CLIENT_ID = (\w+)').search(lines[0])
-    if match: client_id = match.group(1)
-    else: print('None or invalid CLIENT_ID in ' + cred_file)
-    # Search credential file for secret
-    match = re.compile(r'CLIENT_SECRET = (\w+)').search(lines[1])
-    if match: client_secret = match.group(1)
-    else: print('None or invalid CLIENT_SECRET in ' + cred_file)
-    # Search credential file for username
-    match = re.compile(r'USERNAME = (\w.+)').search(lines[2])
-    if match: username = match.group(1)
-    else: print('None or invalid USERNAME in ' + cred_file)
-    # Search credential file for password
-    match = re.compile(r'PASSWORD = (\w+)').search(lines[3])
-    if match: password = match.group(1)
-    else: print('None or invalid PASSWORD in ' + cred_file)
-    print (client_id, client_secret, username, password)
+    config = ConfigParser.RawConfigParser()
+    config.read(cred_file)
+
+    client_id = config.get('API_KEY', 'client_id') 
+    client_secret = config.get('API_KEY', 'client_secret') 
+    username = config.get('API_KEY', 'username') 
+    password = config.get('API_KEY', 'password') 
     return (client_id, client_secret, username, password)
 
 # Sends client_id/username/passowrd and returns access token

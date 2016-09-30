@@ -9,7 +9,7 @@ class TestDevices(unittest.TestCase):
     temperature/humidity/pressure, this is tested with an actual Point.
     """
     def setUp(self):
-        self.point = pypoint.pypoint.Point('credentials.txt')
+        self.point = pypoint.pypoint.Point('credentials.cfg')
 
     def tearDown(self):
         pass

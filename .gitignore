@@ -3,5 +3,5 @@
 *.swn
 *.pyc
 *.coverage
-credentials.txt
+credentials.cfg
 *credentials.*
