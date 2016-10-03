@@ -71,22 +71,29 @@ class Point(object):
         else:
             return -1
 
-    def get_latest_temperature(self, device_id=None):
-        """ Returns the latest reported temperature. """
-        if not device_id: device_id = self.default_id
-        return self.get_temperature_history(device_id)['values'][-1]
-
     def get_temperature(self, device_id=None):
         if not device_id: device_id = self.default_id
         return self._get('devices/' + str(device_id) + '/temperature', 200)
+
+    def get_latest_temperature(self, device_id=None):
+        """ Returns the latest reported temperature. """
+        return self.get_temperature(device_id)['values'][-1]
 
     def get_humidity(self, device_id=None):
         if not device_id: device_id = self.default_id
         return self._get('devices/' + str(device_id) + '/humidity', 200)
 
+    def get_latest_humidity(self, device_id=None):
+        """ Returns the latest reported humidity. """
+        return self.get_humidity(device_id)['values'][-1]
+
     def get_pressure(self, device_id=None):
         if not device_id: device_id = self.default_id
         return self._get('devices/' + str(device_id) + '/pressure', 200)
+
+    def get_latest_pressure(self, device_id=None):
+        """ Returns the latest reported pressure. """
+        return self.get_pressure(device_id)['values'][-1]
 
     def get_sound_peak_levels(self, device_id=None):
         if not device_id: device_id = self.default_id
@@ -149,7 +156,6 @@ class Point(object):
             end_at:   UTC Time (e.g. 2016-12-20T09:00:00.000Z)
             limit:    Number of events to retrieve
             offset:   Define which offset
-
         """
         url = API_URL + 'timelines/' + str(user_id) + '/'
         res = requests.get(url, headers=self.header, params=params)
@@ -171,7 +177,14 @@ class Point(object):
 
     def create_new_user(self, fullname, email, password, subscribe):
         """ Create new user. Args self-explained, subscribe is a bool. """
-        pass # TODO
+        data['fullname'] = fullname
+        data['email'] = email
+        data['password'] = password
+        data['subscribe'] = subscribe
+        json_data = json.dumps(data)
+        url = API_URL + 'users'
+        res = requests.post(url, data=None, json=json_data)
+        return check_response(res, 200, 201, 202)
 
     def get_user(self, user_id='me'):
         """ Get current user. """
@@ -181,8 +194,20 @@ class Point(object):
         """ Get user_id of user associated with the current access token. """
         return self.get_user()['user_id']
 
-    def update_user(self, name=None, nick=None, email=None, old_pw=None, new_pw=None):
-        pass # TODO
+    def update_user(self, user_id='me', **kwargs):
+        """ Update user information. Arguments are pretty straightforward. """
+        data = {}
+        if 'name' in kwargs: data['name'] = kwargs['name']
+        if 'nick' in kwargs: data['nick'] = kwargs['nick']
+        if 'email' in kwargs: data['email'] = kwargs['email']
+        if 'old_pw' in kwargs and 'new_pw' in kwargs:
+            data['password'] = {}
+            data['password']['old'] = kwargs['old_pw']
+            data['password']['new'] = kwargs['new_pw']
+        new_conf = json.dumps(data)
+        url = API_URL + 'users/' + str(user_id)
+        res = requests.put(url, headers=self.header, json=new_conf)
+        return check_response(res, 200)
 
     def get_devices_by_user(self, user_id='me'):
         return self._get('/users/' + str(user_id) + '/devices', 200)
