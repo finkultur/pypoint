@@ -161,17 +161,40 @@ class Point(object):
         res = requests.get(url, headers=self.header, params=params)
         return check_response(res, 200)
 
-    def register_web_hook(self):
-        pass # TODO
+    def register_web_hook(self, url, subscriptions, token=None, user_id='me'):
+        """ Register new web hook.
+        Arguments:
+            url: Address which minut will post to, e.g. 
+                 https://your.domain.com/my_hook
+            subscriptions: list of events to subscribe to, e.g.
+                           ["home:activity:detected", home:sound:high].
+            token: Optional token  
+        """
+        data['url'] = url
+        data['subscriptions'] = subscriptions
+        if token is not None: data['token'] = token
+        json_data = json.dumps(data)
+        url = API_URL + 'timelines/' + str(user_id) + '/hooks'
+        res = requests.post(url, data=None, json=json_data)
+        return check_response(res, 200, 201, 202)
 
-    def get_web_hooks(self):
-        pass # TODO
+    def get_web_hooks(self, user_id='me'):
+        """ Retrieve a list of registered web hooks. """
+        return self._get('timelines/' + str(user_id) + '/hooks' , 200)
 
-    def delete_web_hook(self):
-        pass # TODO
+    def delete_web_hook(self, hook_id, user_id='me'):
+        """ Delete web hook """
+        url = API_URL + 'timelines/' + str(user_id) + '/hooks/' + hook_id
+        res = requests.delete(url, headers=self.header)
+        return check_response(res, 200, 202, 204)
 
-    def trigger_test_event(self):
-        pass # TODO
+    def trigger_test_event(self, hook_id, user_id='me'):
+        """ Trigger test event. 
+            Missing documentation so not sure if/how this works.
+        """
+        url = API_URL + 'timelines/' + str(user_id) + 'hooks/' + hook_id + '/ping'
+        res = request.post(url, data=None, json=None)
+        return check_response(res, 200, 201, 202)
 
     ### Endpoint /users
 
