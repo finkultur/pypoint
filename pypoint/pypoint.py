@@ -1,8 +1,8 @@
 import requests
 import json
 import ConfigParser
+import datetime
 
-CRED_FILE = 'credentials.txt'
 API_URL = 'https://api.minut.com/draft1/'
 
 # Parses cred_file for credentials
@@ -33,6 +33,16 @@ def check_response(res, *valid_responses):
                         str(res.status_code) + ' ' +
                         str(res.content))
 
+# Create a datetime object of an ISO8601 date
+def create_datetime(iso8601_str):
+    return datetime.datetime.strptime(iso8601_str, '%Y-%m-%dT%H:%M:%S.%fZ')
+
+# Create an IS08601-string with an offset of 'days' from now.
+# That is, create_iso8601_str(-7) gives the UTC time 1 week ago.
+def create_iso8601_str(days=0):
+    date = datetime.datetime.utcnow() + datetime.timedelta(days=days)
+    return date.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+
 class Point(object):
     def __init__(self, cred_file):
         client_id, client_secret, username, password = get_credentials(cred_file)
@@ -45,19 +55,30 @@ class Point(object):
         if len(self.points) > 0:
             self.default_id = self.points[0]
 
-    def _get(self, params, *valid_response):
-        url = API_URL + params
-        res = requests.get(url, headers=self.header)
+    def _get(self, endpoint, params, *valid_response):
+        url = API_URL + endpoint
+        res = requests.get(url, headers=self.header, params=params)
         return check_response(res, *valid_response)
+
+    @staticmethod
+    def set_date_limits(**kwargs):
+        params = dict()
+        if 'days_old' in kwargs:
+            # Set appropriate start_at
+            params['start_at'] = create_iso8601_str(-kwargs['days_old'])
+        elif 'start_at' in kwargs or 'end_at' in kwargs:
+            params = kwargs
+        return params
+
 
     ### Endpoint /devices
 
     def get_devices(self):
-        return self._get('devices', 200)
+        return self._get('devices', None, 200)
 
     def get_device(self, device_id=None):
         if not device_id: device_id = self.default_id
-        self._get('devices/' + str(device_id), 200)
+        self._get('devices/' + str(device_id), None, 200)
 
     def update_device(self, new_conf, device_id=None):
         if not device_id: device_id = self.default_id
@@ -71,47 +92,53 @@ class Point(object):
         else:
             return -1
 
-    def get_temperature(self, device_id=None):
+    def get_temperature(self, device_id=None, **kwargs):
         if not device_id: device_id = self.default_id
-        return self._get('devices/' + str(device_id) + '/temperature', 200)
+        params = self.set_date_limits(**kwargs)
+        return self._get('devices/' + str(device_id) + '/temperature', params, 200)
 
     def get_latest_temperature(self, device_id=None):
         """ Returns the latest reported temperature. """
-        return self.get_temperature(device_id)['values'][-1]
+        return self.get_temperature(device_id, days_old=1)['values'][-1]
 
-    def get_humidity(self, device_id=None):
+    def get_humidity(self, device_id=None, **kwargs):
         if not device_id: device_id = self.default_id
-        return self._get('devices/' + str(device_id) + '/humidity', 200)
+        params = self.set_date_limits(**kwargs)
+        return self._get('devices/' + str(device_id) + '/humidity', params, 200)
 
     def get_latest_humidity(self, device_id=None):
         """ Returns the latest reported humidity. """
-        return self.get_humidity(device_id)['values'][-1]
+        return self.get_humidity(device_id, days_old=1)['values'][-1]
 
-    def get_pressure(self, device_id=None):
+    def get_pressure(self, device_id=None, **kwargs):
         if not device_id: device_id = self.default_id
-        return self._get('devices/' + str(device_id) + '/pressure', 200)
+        params = self.set_date_limits(**kwargs)
+        return self._get('devices/' + str(device_id) + '/pressure', params, 200)
 
     def get_latest_pressure(self, device_id=None):
         """ Returns the latest reported pressure. """
-        return self.get_pressure(device_id)['values'][-1]
+        return self.get_pressure(device_id, days_old=1)['values'][-1]
 
-    def get_sound_peak_levels(self, device_id=None):
+    def get_sound_peak_levels(self, device_id=None, **kwargs):
         if not device_id: device_id = self.default_id
-        return self._get('devices/' + str(device_id) + '/sound_peak_levels', 200)
+        params = self.set_date_limits(**kwargs)
+        return self._get('devices/' + str(device_id) + '/sound_peak_levels', params, 200)
 
-    def get_sound_avg_levels(self, device_id=None):
+    def get_sound_avg_levels(self, device_id=None, **kwargs):
         if not device_id: device_id = self.default_id
-        return self._get('devices/' + str(device_id) + '/sound_avg_levels', 200)
+        params = self.set_date_limits(**kwargs)
+        return self._get('devices/' + str(device_id) + '/sound_avg_levels', params, 200)
 
-    def get_events(self, device_id=None):
+    def get_events(self, device_id=None, **kwargs):
         if not device_id: device_id = self.default_id
-        return self._get('devices/' + str(device_id) + '/events', 200)
+        params = self.set_date_limits(**kwargs)
+        return self._get('devices/' + str(device_id) + '/events', params, 200)
 
     ### Endpoint /homes
 
     def get_homes(self):
         """ Get current home. """
-        return self._get('homes', 200)
+        return self._get('homes', None, 200)
 
     def create_home(self, json_data):
         """ Create home. """
@@ -121,7 +148,7 @@ class Point(object):
 
     def get_home(self, home_id):
         """ Get home by home_id. """
-        return self._get('homes/' + str(home_id), 200)
+        return self._get('homes/' + str(home_id), None, 200)
 
     def update_home(self, home_id, json_data):
         " Update home, accepts same data as when creating a home. """
@@ -146,17 +173,20 @@ class Point(object):
 
     ### Endpoint /timelines
 
-    def get_timeline_events(self, user_id, params=None):
+    def get_timeline_events(self, user_id='me', **kwargs):
         """
         Retrieve a list of timeline events.
-        Arguments:
-            user_id (set to 'me' for current user)
         Optional parameters:
-            start_at: UTC Time (e.g. 2014-12-20T09:00:00.000Z)
-            end_at:   UTC Time (e.g. 2016-12-20T09:00:00.000Z)
+            user_id:  Default is 'me'
+            start_at: UTC Time (e.g. 2014-12-24T09:00:00.000Z)
+            end_at:   UTC Time (e.g. 2014-12-25T09:00:00.000Z)
+            days_old: Only fetch events less old than this
             limit:    Number of events to retrieve
             offset:   Define which offset
         """
+        params = self.set_date_limits(**kwargs)
+        if 'limit' in kwargs: params['limit'] = kwargs['limit']
+        if 'offset' in kwargs: params['offset'] = kwargs['offset']
         url = API_URL + 'timelines/' + str(user_id) + '/'
         res = requests.get(url, headers=self.header, params=params)
         return check_response(res, 200)
@@ -180,7 +210,7 @@ class Point(object):
 
     def get_web_hooks(self, user_id='me'):
         """ Retrieve a list of registered web hooks. """
-        return self._get('timelines/' + str(user_id) + '/hooks' , 200)
+        return self._get('timelines/' + str(user_id) + '/hooks', params, 200)
 
     def delete_web_hook(self, hook_id, user_id='me'):
         """ Delete web hook """
@@ -211,7 +241,7 @@ class Point(object):
 
     def get_user(self, user_id='me'):
         """ Get current user. """
-        return self._get('/users/' + str(user_id), 200)
+        return self._get('/users/' + str(user_id), None, 200)
 
     def get_user_id(self):
         """ Get user_id of user associated with the current access token. """
@@ -233,5 +263,5 @@ class Point(object):
         return check_response(res, 200)
 
     def get_devices_by_user(self, user_id='me'):
-        return self._get('/users/' + str(user_id) + '/devices', 200)
+        return self._get('/users/' + str(user_id) + '/devices', None, 200)
 
