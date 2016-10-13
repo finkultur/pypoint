@@ -1,4 +1,5 @@
 import requests
+import requests_cache
 import json
 import ConfigParser
 import datetime
@@ -48,6 +49,8 @@ class Point(object):
         client_id, client_secret, username, password = get_credentials(cred_file)
         self.token = get_token(client_id, username, password)
         self.header = {'Authorization': 'Bearer ' + self.token}
+
+        requests_cache.install_cache('point_cache', backend='sqlite', expire_after=60)
 
         self.points = []
         for dev in self.get_devices()['devices']:
